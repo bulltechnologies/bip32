@@ -29,6 +29,8 @@ dependencies:
 
 Requires Dart **3.0+**.
 
+**Upgrading from 2.0.0?** See **[MIGRATION.md](MIGRATION.md)** for wallet compatibility, caveats, and step-by-step migration.
+
 ---
 
 ## Quick start
@@ -167,11 +169,9 @@ Not in scope: BIP39 mnemonic, BIP44 coin type tables, script types, or blockchai
 
 ## Migrating from 2.x
 
-- `BIP32`, `NetworkType`, `Bip32Type` unchanged.  
-- `HIGHEST_BIT` → prefer `hardenedIndexFlag` (old name deprecated).  
-- `hmacSHA512` → `hmacSha512` (alias deprecated).  
-- New: `dispose`, `Networks`, `WalletLayout`, `maxBip32Depth`, stricter imports.  
-- SDK: **Dart 3+** required.
+See **[MIGRATION.md](MIGRATION.md)** (detailed wallet handling, caveats, testing checklist).
+
+Short version: valid BIP32 keys and paths are unchanged; upgrade to **Dart 3+**, re-test imports, adopt `dispose()` / `copyPrivateKey()` for production.
 
 ---
 

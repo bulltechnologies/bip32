@@ -46,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Treat this release as the baseline for production HD derivation: review the README **Security model** before embedding in wallet software.
 - No substitute for secure enclave, hardware wallets, or platform key stores — this library operates in user-space Dart VM memory.
 
+### Documentation
+
+- Added **[MIGRATION.md](MIGRATION.md)** — full 2.0.0 → 3.0.0 guide for wallets, stored keys, API deltas, and testing.
+
 ## [2.0.0]
 
 ### Added
