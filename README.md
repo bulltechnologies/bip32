@@ -1,71 +1,198 @@
 # bip32
 
-A [BIP32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) compatible library for Flutter writing in Dart.
+[![pub package](https://img.shields.io/pub/v/bip32.svg)](https://pub.dev/packages/bip32)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Inspired by [bitcoinjs](https://github.com/bitcoinjs/bip32)
+Dart/Flutter implementation of [BIP32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) hierarchical deterministic (HD) wallets.
 
-## Example
-```dart
+Maintained by **[Bull Technologies](https://github.com/bulltechnologies/bip32)**. Forked from [dart-bitcoin/bip32-dart](https://github.com/dart-bitcoin/bip32-dart).
 
-import 'package:bip32/bip32.dart' as bip32;
-import 'package:hex/hex.dart';
+---
 
-main() {
-  bip32.BIP32 node = bip32.BIP32.fromBase58('xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi');
+## Why this library
 
-  print(HEX.encode(node.privateKey));
-  // => e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35
+| Concern | Approach |
+|--------|----------|
+| **Spec fidelity** | CKDpriv/CKDpub, serialization, master seed, official test vectors 1–5 |
+| **Safety** | `dispose()` / `zeroize()`, defensive copies, strict import validation |
+| **Clarity** | Layered modules (`core`, `crypto`, `hd`, `wif`), documented public API |
+| **Compatibility** | `BIP32` / `NetworkType` API preserved from 2.x; additive 3.x types |
 
-  bip32.BIP32 nodeNeutered = node.neutered();
-  print(nodeNeutered.isNeutered());
-  // => true
+---
 
-  print(HEX.encode(nodeNeutered.publicKey));
-  // => 0339a36013301597daef41fbe593a02cc513d0b55527ec2df1050e2e8ff49c85c2
+## Install
 
-  print(nodeNeutered.toBase58());
-  // => xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8
-
-  bip32.BIP32 child = node.derivePath('m/0/0');
-  print(child.toBase58());
-  // => xprv9ww7sMFLzJMzur2oEQDB642fbsMS4q6JRraMVTrM9bTWBq7NDS8ZpmsKVB4YF3mZecqax1fjnsPF19xnsJNfRp4RSyexacULXMKowSACTRc
-
-  print(HEX.encode(child.privateKey));
-  // => f26cf12f89ab91aeeb8d7324a22e8ba080829db15c9245414b073a8c342322aa
-
-  bip32.BIP32 childNeutered = child.neutered();
-  print(childNeutered.isNeutered());
-  // => true
-
-  print(HEX.encode(childNeutered.publicKey));
-  // => 02756de182c5dd4b717ea87e693006da62dbb3cddaa4a5cad2ed1f5bbab755f0f5
-
-  print(childNeutered.toBase58());
-  // => xpub6AvUGrnEpfvJ8L7GLRkBTByQ9uBvUHp9o5VxHrFxhvzV4dSWkySpNaBoLR9FpbnwRmTa69yLHF3QfcaxbWT7gWdwws5k4dpmJvqpEuMWwnj
-
-  bip32.BIP32 nodeFromSeed = bip32.BIP32.fromSeed(HEX.decode("000102030405060708090a0b0c0d0e0f"));
-  print(nodeFromSeed.toBase58());
-  // => xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi
-
-  bip32.BIP32 nodeFromPub = bip32.BIP32.fromBase58("xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8");
-  print(nodeFromPub.toBase58());
-  // => xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8
-
-  var message = HEX.decode("0202020202020202020202020202020202020202020202020202020202020202");
-  var signature = nodeFromSeed.sign(message);
-  print(signature);
-  // => [63, 219, 20, 114, 95, 184, 192, 55, 216, 206, 126, 121, 17, 71, 64, 70, 163, 82, 247, 73, 243, 95, 30, 137, 177, 155, 100, 225, 177, 203, 217, 147, 122, 64, 208, 129, 54, 133, 113, 41, 216, 160, 191, 15, 136, 98, 235, 25, 219, 178, 70, 222, 127, 151, 135, 242, 25, 192, 161, 187, 187, 84, 81, 215]
-
-  print(HEX.encode(signature));
-  // => 3fdb14725fb8c037d8ce7e7911474046a352f749f35f1e89b19b64e1b1cbd9937a40d08136857129d8a0bf0f8862eb19dbb246de7f9787f219c0a1bbbb5451d7
-
-  print(nodeFromSeed.verify(message, signature));
-  // => true
-}
-
+```yaml
+dependencies:
+  bip32: ^3.0.0
 ```
 
-## Contributor
-  * anicdh <anic.dh@gmail.com>
-  * p3root 
-  * jcramer (null-safety)
+Requires Dart **3.0+**.
+
+---
+
+## Quick start
+
+```dart
+import 'dart:typed_data';
+
+import 'package:bip32/bip32.dart';
+import 'package:hex/hex.dart';
+
+void main() {
+  // From BIP32 test vector 1 seed
+  final seed = Uint8List.fromList([
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+  ]);
+  final master = BIP32.fromSeed(seed, Networks.bitcoin);
+
+  // Derive BIP44-style path (caller chooses path; library does not enforce BIP44)
+  final account = master.derivePath("m/44'/0'/0'");
+  final receive = account.derive(0).derive(0);
+
+  print(receive.neutered().toBase58()); // xpub…
+  print(HEX.encode(receive.copyPrivateKey()!));
+
+  master.dispose(); // zeroize secrets when done
+}
+```
+
+---
+
+## API overview
+
+### Extended keys — `BIP32` / `ExtendedKey`
+
+| Method | BIP32 meaning |
+|--------|----------------|
+| `fromSeed(seed, [network])` | Master key: HMAC-SHA512(`"Bitcoin seed"`, seed) |
+| `fromBase58(string, [network])` | Deserialize 78-byte extended key + checksum |
+| `fromPrivateKey` / `fromPublicKey` | Build node from raw 32-byte scalar or compressed pubkey |
+| `derive(index)` | One CKD step; hardened if `index ≥ 0x80000000` |
+| `deriveHardened(i)` | `derive(i + 0x80000000)` |
+| `derivePath("m/44'/0'/0'/0/0")` | Repeated CKD |
+| `neutered()` | `N((k,c))` — public-only node, same chain code |
+| `toBase58()` / `fromBase58` | Base58Check `xprv` / `xpub` |
+| `toWIF()` | Bitcoin WIF (compressed) for leaf private scalar |
+| `sign` / `verify` | ECDSA on node key (low-S) |
+| `dispose()` | Zeroize private scalar, chain code, cached pubkey |
+
+Metadata: `depth`, `index`, `parentFingerprint`, `fingerprint`, `identifier`, `chainCode`, `isMaster`, `isNeutered()`.
+
+### Networks — `Networks`, `NetworkType`, `Bip32Version`
+
+```dart
+Networks.bitcoin        // xpub/xprv, WIF 0x80
+Networks.bitcoinTestnet // tpub/tprv, WIF 0xef
+Networks.litecoin       // legacy bytes used in upstream tests
+```
+
+Custom network:
+
+```dart
+final network = NetworkType(
+  wif: 0xef,
+  bip32: Bip32Version(public: 0x043587cf, private: 0x04358394),
+);
+```
+
+### Paths — `parseDerivationPath`, `formatDerivationPath`, `toHardenedIndex`, …
+
+### Default wallet layout (BIP32 § wallet structure, advisory)
+
+```dart
+WalletLayout.externalPath(0, 5); // m/0'/0/5
+WalletLayout.deriveExternal(master, 0, 5);
+```
+
+Accounts use hardened indices: `m/iH/0/k` (receive), `m/iH/1/k` (change).
+
+### Low-level crypto (advanced)
+
+`hash160`, `hmacSha512`, `isPrivate`, `isPoint`, `pointFromScalar`, `privateAdd`, `pointAddScalar` — exposed for auditing and custom pipelines.
+
+---
+
+## Security model
+
+### Extended public keys are not “just public”
+
+If an attacker learns:
+
+- parent **xpub**, and  
+- any **non-hardened** private child,
+
+they can recover the parent **xprv** and the whole subtree. Use **hardened** derivation for account levels (`44'/0'/…`).
+
+### Secret handling
+
+1. Prefer `copyPrivateKey()` over storing `privateKey` references.  
+2. Call `dispose()` on nodes that held secrets.  
+3. `zeroize(Uint8List)` for seeds or buffers you allocated.  
+4. Dart cannot guarantee RAM is cleared OS-wide; minimize lifetime and avoid `print`/logs of keys.
+
+### Import hardening
+
+Extended keys from untrusted sources are validated for:
+
+- version bytes vs payload type (pub/prv)  
+- master depth/fingerprint/index consistency  
+- private scalar in `[1, n-1]`  
+- **compressed** pubkeys only (`0x02` / `0x03`) on import  
+- curve membership for public points  
+- depth ≤ **255** (serializable limit)
+
+### Derivation limits
+
+- Child index: `0 … 2³²-1` (hardened flag in bit 31)  
+- Tree depth: max **255** (BIP32 1-byte depth field)  
+- Invalid CKD outputs skip to `index + 1` per spec (bounded at `uint32Max`)
+
+---
+
+## BIP32 compliance checklist
+
+- [x] Master generation from 128–512 bit seed  
+- [x] CKDpriv / CKDpub with hardened and normal indices  
+- [x] Neutered keys `N(x)`  
+- [x] 78-byte serialization + Base58Check  
+- [x] Hash160 identifier / fingerprint  
+- [x] Official test vectors 1–2 (fixtures), 3–4 (leading zeros), 5 (invalid keys)  
+- [x] Invalid intermediate IL / infinity handling (retry next index)  
+- [x] Default wallet layout helpers (advisory paths)
+
+Not in scope: BIP39 mnemonic, BIP44 coin type tables, script types, or blockchain RPC.
+
+---
+
+## Migrating from 2.x
+
+- `BIP32`, `NetworkType`, `Bip32Type` unchanged.  
+- `HIGHEST_BIT` → prefer `hardenedIndexFlag` (old name deprecated).  
+- `hmacSHA512` → `hmacSha512` (alias deprecated).  
+- New: `dispose`, `Networks`, `WalletLayout`, `maxBip32Depth`, stricter imports.  
+- SDK: **Dart 3+** required.
+
+---
+
+## Development
+
+```bash
+dart pub get
+dart test
+dart analyze lib
+```
+
+---
+
+## License
+
+- **Code**: [MIT](LICENSE) — Copyright anicdh; Bull Technologies (fork).  
+- **BIP32 spec**: [BSD-2-Clause](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki).
+
+## Credits
+
+- [anicdh](https://github.com/anicdh) — original library  
+- [dart-bitcoin/bip32-dart](https://github.com/dart-bitcoin/bip32-dart) — null-safety lineage  
+- [bitcoinjs/bip32](https://github.com/bitcoinjs/bip32) — behavioral reference  
+- [Bull Technologies](https://github.com/bulltechnologies) — 3.x maintenance and hardening

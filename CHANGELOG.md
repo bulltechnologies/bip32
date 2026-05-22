@@ -1,39 +1,60 @@
-## 1.0.0
+# Changelog
 
-- Initial version, created by anicdh
+All notable changes to this project are documented here.
 
-## 1.0.1
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-- Format code & add description
+## [3.0.0] - 2026-05-22
 
-## 1.0.2
+### Added
 
-- Change version bs58check
+- Fork ownership under [Bull Technologies](https://github.com/bulltechnologies/bip32) with updated `homepage`, `repository`, and `issue_tracker` in `pubspec.yaml`.
+- Layered package layout: `lib/src/core`, `crypto`, `hd`, `wif` with explicit barrel exports in `package:bip32/bip32.dart`.
+- **Security**: `BIP32.dispose()`, `zeroize()`, `copyPrivateKey()`; HMAC/CKD scratch buffers zeroed after use; cached pubkeys cleared on dispose.
+- **Validation**: chain-code length; depth ≤ 255; compressed-only pubkey import; version/payload consistency; master node metadata rules.
+- **BIP32 spec**: official test vectors 3, 4, and 5; CKD identity tests `N(CKDpriv(m,i))` vs `CKDpub(N(m),i)`; full vector 5 invalid-key matrix.
+- **API**: `Networks` presets, `Bip32Version`, `WalletLayout`, path helpers (`parseDerivationPath`, `toHardenedIndex`, …), `ExtendedKey` typedef, `isMaster`, `fingerprintInt`, `maxBip32Depth`, `isValidDerivationTweak`.
+- **Errors**: `Bip32Exception` hierarchy for new surfaces (legacy factories keep `ArgumentError` messages).
 
-## 1.0.3
+### Changed
 
-- Change generate BIP32 from function to factory
+- Dart SDK constraint: `>=3.0.0 <4.0.0`.
+- Dependencies: `pointycastle` 4.x, current `test` / `lints`.
+- Derivation tweak check uses `isValidDerivationTweak` (documented alignment with common implementations).
+- `fromPublicKey` factory rejects uncompressed keys explicitly (import path); curve validation unchanged.
+- Expanded dartdoc across public modules; README rewritten with security and compliance sections.
 
-## 1.0.4
+### Deprecated
 
-- Fix error message when generate BIP32 from private key
-- Fix argument of wif decode function
+- `Bip32Type` → `Bip32Version`
+- `HIGHEST_BIT`, `UINT31_MAX`, `UINT32_MAX` → `hardenedIndexFlag`, `uint31Max`, `uint32Max`
+- `hmacSHA512` → `hmacSha512`
+- `fromBuffer` / `toBuffer` in `ecurve.dart` → `bufferToBigInt` / `bigIntTo32Bytes`
+- `lib/src/utils/*` → top-level `crypto` / `wif` exports
 
-## 1.0.5
+### Fixed
 
-- Fix wif decodeRaw function
+- Extended keys could be derived past depth 255 while serializing depth as `uint8` (silent truncation).
+- `derive(index + 1)` could throw `Expected UInt32` instead of a clear failure at `index == uint32Max`.
+- `sign()` on neutered nodes now throws `Missing private key` instead of a null error.
+- Public key material cached in memory was not cleared on `dispose()`.
+- `WalletLayout.deriveExternal` / `deriveInternal` ignored `addressIndex` (3.0.0 beta fix).
 
-## 1.0.6
+### Security
 
-- Fix derive bug
+- Treat this release as the baseline for production HD derivation: review the README **Security model** before embedding in wallet software.
+- No substitute for secure enclave, hardware wallets, or platform key stores — this library operates in user-space Dart VM memory.
 
-## 1.0.8
+## [2.0.0]
 
-- Update pointycastle version to 2.0.0
+### Added
 
-## 1.0.10
+- Null-safety migration.
 
-- Fix sign
+## [1.0.0] - [1.0.10]
 
-## 2.0.0
-- Add null-safety
+Historical releases by [anicdh](https://github.com/anicdh) and contributors on [dart-bitcoin/bip32-dart](https://github.com/dart-bitcoin/bip32-dart). See upstream tags for per-version notes.
+
+[3.0.0]: https://github.com/bulltechnologies/bip32/compare/v2.0.0...v3.0.0
+[2.0.0]: https://github.com/bulltechnologies/bip32/releases/tag/v2.0.0
