@@ -2,35 +2,44 @@
 ///
 /// Curve: SECG secp256k1 (same as Bitcoin). Group order *n* bounds all private
 /// scalars and BIP32 tweaks `IL`.
+///
+/// v4 uses [native_sig] for curve operations. PointyCastle-specific types
+/// (`ECPoint`, `decodePoint`, `encodePoint`, …) are no longer exported.
 library;
 
 import 'dart:typed_data';
 
-import 'package:hex/hex.dart';
-import 'package:pointycastle/api.dart'
-    show PrivateKeyParameter, PublicKeyParameter;
-import 'package:pointycastle/digests/sha256.dart';
-import 'package:pointycastle/ecc/api.dart'
-    show ECPrivateKey, ECPublicKey, ECSignature, ECPoint;
-import 'package:pointycastle/ecc/curves/secp256k1.dart';
-import 'package:pointycastle/macs/hmac.dart';
-import 'package:pointycastle/signers/ecdsa_signer.dart';
+import 'package:native_sig/native_sig.dart';
+
+import '../core/secure_buffer.dart';
 
 final Uint8List _zero32 = Uint8List(32);
-final Uint8List _ecGroupOrder = Uint8List.fromList(
-  HEX.decode(
-    'fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141',
-  ),
-);
-final Uint8List _ecFieldPrime = Uint8List.fromList(
-  HEX.decode(
-    'fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f',
-  ),
+final Uint8List _ecGroupOrder = Uint8List.fromList([
+  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, //
+  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
+  0xba, 0xae, 0xdc, 0xe6, 0xaf, 0x48, 0xa0, 0x3b,
+  0xbf, 0xd2, 0x5e, 0x8c, 0xd0, 0x36, 0x41, 0x41,
+]);
+final Uint8List _ecFieldPrime = Uint8List.fromList([
+  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, //
+  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+  0xff, 0xff, 0xff, 0xfe, 0xff, 0xff, 0xfc, 0x2f,
+]);
+final Uint8List _halfCurveOrderBytes = Uint8List.fromList([
+  0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, //
+  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+  0x5d, 0x57, 0x6e, 0x73, 0x57, 0xa4, 0x50, 0x1d,
+  0xdf, 0xe9, 0x2f, 0x46, 0x68, 0x1b, 0x20, 0xa0,
+]);
+
+/// secp256k1 group order *n*.
+final BigInt curveOrder = BigInt.parse(
+  'fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141',
+  radix: 16,
 );
 
-final ECCurve_secp256k1 secp256k1 = ECCurve_secp256k1();
-final BigInt curveOrder = secp256k1.n;
-final ECPoint curveGenerator = secp256k1.G;
+/// Half of [curveOrder] (BIP62 low-S bound).
 final BigInt halfCurveOrder = curveOrder >> 1;
 
 const String throwBadPrivate = 'Expected Private';
@@ -54,8 +63,8 @@ bool isPoint(Uint8List p) {
   if (_compare(xCoord, _zero32) == 0) return false;
   if (_compare(xCoord, _ecFieldPrime) == 1) return false;
   try {
-    decodePoint(p);
-  } catch (_) {
+    if (!Secp256k1.isValidPublicKey(p)) return false;
+  } on NativeSigException {
     return false;
   }
   if ((prefix == 0x02 || prefix == 0x03) && p.length == 33) return true;
@@ -102,10 +111,7 @@ bool assumeCompression(bool? value, Uint8List? pubkey) {
 /// serP(k): compressed SEC1 encoding of scalar [d].
 Uint8List? pointFromScalar(Uint8List d, bool compressed) {
   if (!isPrivate(d)) throw ArgumentError(throwBadPrivate);
-  final scalar = bufferToBigInt(d);
-  final point = curveGenerator * scalar;
-  if (point == null || point.isInfinity) return null;
-  return encodePoint(point, compressed);
+  return Secp256k1.publicKeyFromSecret(d, compressed: compressed);
 }
 
 /// Child public key: point(parse256(IL)) + Kpar (BIP32 CKDpub).
@@ -113,39 +119,50 @@ Uint8List? pointAddScalar(Uint8List p, Uint8List tweak, bool compressed) {
   if (!isPoint(p)) throw ArgumentError(throwBadPoint);
   if (!isOrderScalar(tweak)) throw ArgumentError(throwBadTweak);
   final useCompressed = assumeCompression(compressed, p);
-  final parent = decodePoint(p);
-  if (_compare(tweak, _zero32) == 0) {
-    return encodePoint(parent, useCompressed);
+  try {
+    return Secp256k1.publicKeyTweakAdd(
+      publicKey: p,
+      tweak: tweak,
+      compressed: useCompressed,
+    );
+  } on TweakInfinityException {
+    return null;
+  } on InvalidTweakException {
+    throw ArgumentError(throwBadTweak);
+  } on InvalidPublicKeyException {
+    throw ArgumentError(throwBadPoint);
   }
-  final tweakScalar = bufferToBigInt(tweak);
-  final tweakPoint = curveGenerator * tweakScalar;
-  if (tweakPoint == null) return null;
-  final sum = parent! + tweakPoint;
-  if (sum == null || sum.isInfinity) return null;
-  return encodePoint(sum, useCompressed);
 }
 
 /// Child private key: parse256(IL) + kpar (mod n).
 Uint8List? privateAdd(Uint8List d, Uint8List tweak) {
   if (!isPrivate(d)) throw ArgumentError(throwBadPrivate);
   if (!isOrderScalar(tweak)) throw ArgumentError(throwBadTweak);
-  final dd = bufferToBigInt(d);
-  final tt = bufferToBigInt(tweak);
-  var dt = bigIntTo32Bytes((dd + tt) % curveOrder);
-  if (!isPrivate(dt)) return null;
-  return dt;
+  try {
+    final child = Secp256k1.privateKeyTweakAdd(secretKey: d, tweak: tweak);
+    if (!isPrivate(child)) {
+      zeroize(child);
+      return null;
+    }
+    return child;
+  } on TweakInfinityException {
+    return null;
+  } on InvalidTweakException {
+    throw ArgumentError(throwBadTweak);
+  } on InvalidSecretKeyException {
+    throw ArgumentError(throwBadPrivate);
+  }
 }
 
 /// ECDSA sign with low-S normalization (BIP62-style).
 Uint8List sign(Uint8List hash, Uint8List privateKey) {
   if (!isScalar(hash)) throw ArgumentError(throwBadHash);
   if (!isPrivate(privateKey)) throw ArgumentError(throwBadPrivate);
-  final sig = _deterministicGenerateK(hash, privateKey);
-  final buffer = Uint8List(64);
-  buffer.setRange(0, 32, _encodeBigIntTo32(sig.r));
-  final s = sig.s.compareTo(halfCurveOrder) > 0 ? curveOrder - sig.s : sig.s;
-  buffer.setRange(32, 64, _encodeBigIntTo32(s));
-  return buffer;
+  try {
+    return Secp256k1.ecdsaSign(messageHash: hash, secretKey: privateKey);
+  } on InvalidSecretKeyException {
+    throw ArgumentError(throwBadPrivate);
+  }
 }
 
 bool verify(Uint8List hash, Uint8List publicKey, Uint8List signature) {
@@ -153,12 +170,34 @@ bool verify(Uint8List hash, Uint8List publicKey, Uint8List signature) {
   if (!isPoint(publicKey)) throw ArgumentError(throwBadPoint);
   if (!isSignature(signature)) throw ArgumentError(throwBadSignature);
 
-  final q = decodePoint(publicKey);
-  final r = bufferToBigInt(signature.sublist(0, 32));
-  final s = bufferToBigInt(signature.sublist(32, 64));
-  final signer = ECDSASigner(null, HMac(SHA256Digest(), 64));
-  signer.init(false, PublicKeyParameter(ECPublicKey(q, secp256k1)));
-  return signer.verifySignature(hash, ECSignature(r, s));
+  final verifySig = _canonicalizeSignatureForVerify(signature);
+  try {
+    return Secp256k1.ecdsaVerify(
+      signature: verifySig,
+      messageHash: hash,
+      publicKey: publicKey,
+    );
+  } on InvalidPublicKeyException {
+    throw ArgumentError(throwBadPoint);
+  } on InvalidSignatureException {
+    throw ArgumentError(throwBadSignature);
+  } finally {
+    if (!identical(verifySig, signature)) {
+      zeroize(verifySig);
+    }
+  }
+}
+
+/// Maps legacy high-S signatures to low-S for verification (BIP32 compat).
+Uint8List _canonicalizeSignatureForVerify(Uint8List signature) {
+  final s = signature.sublist(32, 64);
+  if (_compare(s, _halfCurveOrderBytes) <= 0) {
+    return signature;
+  }
+  final canonical = Uint8List.fromList(signature);
+  final lowS = curveOrder - bufferToBigInt(s);
+  canonical.setRange(32, 64, bigIntTo32Bytes(lowS));
+  return canonical;
 }
 
 BigInt bufferToBigInt(List<int> bytes) {
@@ -199,25 +238,6 @@ Uint8List _encodeBigInt(BigInt number) {
     value >>= 8;
   }
   return result;
-}
-
-Uint8List _encodeBigIntTo32(BigInt number) => bigIntTo32Bytes(number);
-
-ECPoint? decodePoint(Uint8List encoded) =>
-    secp256k1.curve.decodePoint(encoded);
-
-Uint8List encodePoint(ECPoint? point, bool compressed) =>
-    point!.getEncoded(compressed);
-
-ECSignature _deterministicGenerateK(Uint8List hash, Uint8List privateKey) {
-  final signer = ECDSASigner(null, HMac(SHA256Digest(), 64));
-  signer.init(
-    true,
-    PrivateKeyParameter(
-      ECPrivateKey(bufferToBigInt(privateKey), secp256k1),
-    ),
-  );
-  return signer.generateSignature(hash) as ECSignature;
 }
 
 int _compare(Uint8List a, Uint8List b) {

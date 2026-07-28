@@ -1,9 +1,12 @@
 import 'dart:typed_data';
 
 import 'package:bip32/bip32.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'support/native_test_init.dart';
 
 void main() {
+  registerNativeTestHooks();
   test('Networks.bitcoin matches legacy defaults', () {
     final node = BIP32.fromSeed(
       Uint8List.fromList(List<int>.generate(16, (i) => i)),

@@ -1,5 +1,7 @@
 # Migrating from bip32 2.0.0 to 3.0.0
 
+> **Upgrading from 3.0.0?** See [Migrating from 3.0.0 to 4.0.0](#migrating-from-300-to-400) below.
+
 This guide is for teams that built wallets, signing flows, or key-storage pipelines on **bip32 2.0.0** (including the upstream [dart-bitcoin/bip32-dart](https://github.com/dart-bitcoin/bip32-dart) lineage) and are moving to **bip32 3.0.0** maintained by [Bull Technologies](https://github.com/bulltechnologies/bip32).
 
 Read this document end-to-end before upgrading production systems that hold user funds.
@@ -713,10 +715,70 @@ No public third-party audit is claimed. Treat as standard open-source risk; run 
 
 ---
 
+## Migrating from 3.0.0 to 4.0.0
+
+### Hard requirements
+
+| | v3.0.0 | v4.0.0 |
+|---|--------|--------|
+| Dart | `>=3.0.0 <4.0.0` | `>=3.12.0 <4.0.0` |
+| Flutter | optional (pure Dart OK) | **required** `>=3.44.0` |
+| Crypto backend | PointyCastle + `bs58check` | `native_crypto` + `native_sig` (no fallback) |
+
+### What stays the same
+
+- All byte-oriented `BIP32` APIs: factories, `derive` / `derivePath`, `sign` / `verify`, `toBase58` / `fromBase58`, `toWIF`, `dispose`, error messages on invalid inputs.
+- Valid-key outputs: same `xprv` / `xpub`, WIF, identifiers, fingerprints, and deterministic ECDSA bytes for existing vectors.
+- `BIP32.verify` accepts legacy **high-S** signatures (canonicalized to low-S before calling `native_sig`).
+- Base58Check wire format (internal codec; checksum still double SHA-256).
+
+### What changed (intentional v4 boundary)
+
+| Removed from public API | Replacement |
+|-------------------------|-------------|
+| `ECPoint`, `decodePoint`, `encodePoint` | Use byte SEC1 functions in `ecurve.dart` (`pointFromScalar`, `isPoint`, …) |
+| `ECCurve_secp256k1`, `secp256k1`, `curveGenerator` | `curveOrder`, `halfCurveOrder`, `native_sig` via package exports |
+| Direct `pointycastle` / `bs58check` transitives | Not exposed; use `bip32` APIs only |
+
+### Platform contract (new in v4)
+
+1. **Initialize once per isolate:** `NativeSig.ensureInitialized()` before any secp256k1 use (call from your app isolate before spawning workers).
+2. **Background isolate:** HMAC, hash, and CKD must run on a dedicated crypto worker isolate — not the Flutter UI isolate (`native_crypto` asserts this in debug).
+3. **No async secret shuttle:** the synchronous API is unchanged; apps spawn isolates and pass work items, not duplicated secrets through async wrappers.
+
+### Dependency snippet
+
+```yaml
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  bip32: ^4.0.0
+  native_sig: # initialized by your app bootstrap
+```
+
+`bip32` pins immutable git refs for `native_crypto` and `native_sig` until those packages publish to pub.dev.
+
+### Testing after upgrade
+
+Run the full suite on a desktop device with native libraries linked:
+
+```bash
+tool/run_host_tests.sh macos   # or linux / windows
+```
+
+Golden outputs are pinned in `test/v3_compat_golden.json`; any drift blocks release.
+
+---
+
 ## Document history
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 1.1 | 2026-07-24 | Added 3.0.0 → 4.0.0 native integration section |
 | 1.0 | 2026-05-22 | Initial migration guide for bip32 3.0.0 |
 
 For release notes see [CHANGELOG.md](CHANGELOG.md). For API examples see [README.md](README.md).

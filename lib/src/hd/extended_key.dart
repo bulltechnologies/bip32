@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:bs58check/bs58check.dart' as bs58check;
+import '../encoding/base58check.dart' as base58check;
 
 import '../core/constants.dart';
 import '../core/networks.dart';
@@ -112,7 +112,12 @@ class BIP32 {
   String toBase58() {
     _ensureNotDisposed();
     validateDepth(depth);
-    return bs58check.encode(_serialize());
+    final buffer = _serialize();
+    try {
+      return base58check.encode(buffer);
+    } finally {
+      zeroize(buffer);
+    }
   }
 
   /// WIF for this node's private scalar (compressed).
@@ -170,7 +175,7 @@ class BIP32 {
     return node;
   }
 
-  /// ECDSA sign (RFC 6979 via pointycastle, low-S normalized).
+  /// ECDSA sign (RFC 6979 via native backend, low-S normalized).
   Uint8List sign(Uint8List hash) {
     _ensureNotDisposed();
     _requirePrivate('Missing private key');
@@ -204,11 +209,15 @@ class BIP32 {
 
   /// Decodes a Base58Check extended key.
   factory BIP32.fromBase58(String string, [NetworkType? network]) {
-    final buffer = bs58check.decode(string);
-    if (buffer.length != extendedKeyByteLength) {
-      throw ArgumentError('Invalid buffer length');
+    final buffer = base58check.decode(string);
+    try {
+      if (buffer.length != extendedKeyByteLength) {
+        throw ArgumentError('Invalid buffer length');
+      }
+      return _deserialize(buffer, network ?? Networks.bitcoin);
+    } finally {
+      zeroize(buffer);
     }
-    return _deserialize(buffer, network ?? Networks.bitcoin);
   }
 
   /// Extended public node from compressed [publicKey] and [chainCode].

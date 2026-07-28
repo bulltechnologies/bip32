@@ -11,3 +11,6 @@ build/
 doc/api/
 
 .idea/
+
+# Copied from test/ by tool/run_host_tests.sh for integration tests
+example/assets/*.json

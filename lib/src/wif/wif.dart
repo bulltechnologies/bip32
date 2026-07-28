@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:bs58check/bs58check.dart' as bs58check;
+import '../core/secure_buffer.dart';
+import '../encoding/base58check.dart' as base58check;
 
 /// Wallet Import Format (WIF) payload — not part of BIP32, but commonly used
 /// alongside derived private scalars.
@@ -24,7 +25,7 @@ WIF decodeRaw(Uint8List buffer, [int? version]) {
   if (buffer.length == 33) {
     return WIF(
       version: buffer[0],
-      privateKey: buffer.sublist(1, 33),
+      privateKey: Uint8List.fromList(buffer.sublist(1, 33)),
       compressed: false,
     );
   }
@@ -36,7 +37,7 @@ WIF decodeRaw(Uint8List buffer, [int? version]) {
   }
   return WIF(
     version: buffer[0],
-    privateKey: buffer.sublist(1, 33),
+    privateKey: Uint8List.fromList(buffer.sublist(1, 33)),
     compressed: true,
   );
 }
@@ -54,8 +55,20 @@ Uint8List encodeRaw(int version, Uint8List privateKey, bool compressed) {
   return result;
 }
 
-WIF decode(String string, [int? version]) =>
-    decodeRaw(bs58check.decode(string), version);
+WIF decode(String string, [int? version]) {
+  final decoded = base58check.decode(string);
+  try {
+    return decodeRaw(decoded, version);
+  } finally {
+    zeroize(decoded);
+  }
+}
 
-String encode(WIF wif) =>
-    bs58check.encode(encodeRaw(wif.version, wif.privateKey, wif.compressed));
+String encode(WIF wif) {
+  final raw = encodeRaw(wif.version, wif.privateKey, wif.compressed);
+  try {
+    return base58check.encode(raw);
+  } finally {
+    zeroize(raw);
+  }
+}

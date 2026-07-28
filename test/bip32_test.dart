@@ -1,15 +1,20 @@
 import 'dart:typed_data';
 import 'package:bip32/bip32.dart';
 import 'package:hex/hex.dart';
-import 'package:test/test.dart';
-import 'dart:io';
-import 'dart:convert';
+import 'package:flutter_test/flutter_test.dart';
 
-final LITECOIN = new NetworkType(bip32: new Bip32Type(private: 0x019d9cfe, public: 0x019da462), wif: 0xb0);
+import 'support/native_test_init.dart';
+import 'support/test_assets.dart';
+
+final LITECOIN = NetworkType(bip32: Bip32Type(private: 0x019d9cfe, public: 0x019da462), wif: 0xb0);
 List<dynamic> validAll = [];
 
-void main() {
-  Map<String, dynamic> fixtures = json.decode(File('./test/fixtures.json').readAsStringSync(encoding: utf8));
+Future<void> main() async {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  registerNativeTestHooks();
+  final fixtures = decodeTestAssetJson(
+    await loadTestAssetJson('fixtures.json'),
+  );
   (fixtures['valid'] as List<dynamic>).forEach((f) {
     f['master']['network'] = f['network'];
     f['master']['children'] = f['children'];

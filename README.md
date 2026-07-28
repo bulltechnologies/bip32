@@ -16,20 +16,40 @@ Maintained by **[Bull Technologies](https://github.com/bulltechnologies/bip32)**
 | **Spec fidelity** | CKDpriv/CKDpub, serialization, master seed, official test vectors 1–5 |
 | **Safety** | `dispose()` / `zeroize()`, defensive copies, strict import validation |
 | **Clarity** | Layered modules (`core`, `crypto`, `hd`, `wif`), documented public API |
-| **Compatibility** | `BIP32` / `NetworkType` API preserved from 2.x; additive 3.x types |
+| **Compatibility** | `BIP32` / `NetworkType` API preserved from 2.x; v4 adds Flutter-native backends |
 
 ---
 
 ## Install
 
 ```yaml
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.44.0"
+
 dependencies:
-  bip32: ^3.0.0
+  flutter:
+    sdk: flutter
+  bip32: ^4.0.0
 ```
 
-Requires Dart **3.0+**.
+Requires **Flutter 3.44+** (Dart 3.12+). Cryptography is delegated to native backends; there is no pure-Dart fallback.
 
-**Upgrading from 2.0.0?** See **[MIGRATION.md](MIGRATION.md)** for wallet compatibility, caveats, and step-by-step migration.
+### Platform setup
+
+1. Call `NativeSig.ensureInitialized()` once during app startup (before spawning crypto isolates).
+2. Run all `bip32` operations that touch secrets on a **dedicated background isolate**, not the UI isolate.
+
+```dart
+import 'package:native_sig/native_sig.dart';
+
+void bootstrapCrypto() {
+  NativeSig.ensureInitialized();
+  // spawn your crypto worker isolate(s) after this
+}
+```
+
+**Upgrading from 3.0.0?** See **[MIGRATION.md](MIGRATION.md)** (§ Migrating from 3.0.0 to 4.0.0).
 
 ---
 
@@ -76,7 +96,7 @@ void main() {
 | `neutered()` | `N((k,c))` — public-only node, same chain code |
 | `toBase58()` / `fromBase58` | Base58Check `xprv` / `xpub` |
 | `toWIF()` | Bitcoin WIF (compressed) for leaf private scalar |
-| `sign` / `verify` | ECDSA on node key (low-S) |
+| `sign` / `verify` | ECDSA on node key (low-S sign; verify accepts legacy high-S) |
 | `dispose()` | Zeroize private scalar, chain code, cached pubkey |
 
 Metadata: `depth`, `index`, `parentFingerprint`, `fingerprint`, `identifier`, `chainCode`, `isMaster`, `isNeutered()`.

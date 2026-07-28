@@ -2,19 +2,30 @@ name: bip32
 description: >-
   A [BIP32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki)
   hierarchical deterministic wallet library for Dart and Flutter.
-version: 3.0.0
+version: 4.0.0
 homepage: https://github.com/bulltechnologies/bip32
 repository: https://github.com/bulltechnologies/bip32
 issue_tracker: https://github.com/bulltechnologies/bip32/issues
+publish_to: none
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.44.0"
 
 dependencies:
-  pointycastle: ^4.0.0
-  hex: ^0.2.0
-  bs58check: ^1.0.2
+  flutter:
+    sdk: flutter
+  native_crypto:
+    git:
+      url: https://github.com/bulltechnologies/native_crypto.git
+      ref: 1c7fd976e8f2bd18c34c33df11b2fe6aeefb43b7
+  native_sig:
+    git:
+      url: https://github.com/bulltechnologies/native_sig.git
+      ref: 375accd28ce9a0fda74ad91334983bc7c35f3ea0
 
 dev_dependencies:
-  test: ^1.25.0
-  lints: ^6.1.0
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  hex: ^0.2.0

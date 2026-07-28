@@ -1,5 +1,6 @@
 // BIP32 hierarchical deterministic wallets for Dart and Flutter.
 //
+// v4 delegates cryptography to native_crypto and native_sig (Flutter >=3.44).
 // Specification: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 // Repository: https://github.com/bulltechnologies/bip32
 
