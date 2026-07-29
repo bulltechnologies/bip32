@@ -14,11 +14,11 @@ dependencies:
   native_crypto:
     git:
       url: https://github.com/bulltechnologies/native_crypto.git
-      ref: f4037ee8a4ba203d628b262556029d74ded4c8f0
+      ref: 07b0dc28cb3f715cfb6b66f4c2fc854c29116fdc
   native_sig:
     git:
       url: https://github.com/bulltechnologies/native_sig.git
-      ref: 375accd28ce9a0fda74ad91334983bc7c35f3ea0
+      ref: 370dd80bd3d519dc63a5f93a625c5c6d926bcfa8
 
 dev_dependencies:
   flutter_test:
