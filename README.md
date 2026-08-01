@@ -151,7 +151,8 @@ they can recover the parent **xprv** and the whole subtree. Use **hardened** der
 1. Prefer `copyPrivateKey()` over storing `privateKey` references.  
 2. Call `dispose()` on nodes that held secrets.  
 3. `zeroize(Uint8List)` for seeds or buffers you allocated.  
-4. Dart cannot guarantee RAM is cleared OS-wide; minimize lifetime and avoid `print`/logs of keys.
+4. Private CKD scalar addition is delegated to `native_sig`; HMAC-SHA512 is delegated to `native_crypto`. CKD validation stays byte-based, so private scalars are not converted to managed `BigInt` values.
+5. Dart cannot guarantee RAM is cleared OS-wide; minimize lifetime and avoid `print`/logs of keys. The managed private scalar held by a live node remains unavoidable for software signing and is wiped by `dispose()`.
 
 ### Import hardening
 

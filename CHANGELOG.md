@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Native crypto must run on a **dedicated background isolate** (`native_crypto` enforces this in debug).
 - Call `NativeSig.ensureInitialized()` once before spawning your crypto isolate.
 - `native_sig` `publicKeyTweakAdd` now zeroizes the native tweak buffer (required for BIP32 `IL`).
+- Private CKD scalar validation no longer materializes Dart `BigInt` values; native scalar tweak-add remains the private derivation boundary, and CKD temporary views/copies are wiped deterministically.
 
 ### Documentation
 

@@ -34,6 +34,10 @@ final Uint8List _halfCurveOrderBytes = Uint8List.fromList([
 ]);
 
 /// secp256k1 group order *n*.
+///
+/// This compatibility value is only used by the public BigInt conversion
+/// helpers and signature canonicalization. Private scalar validation and CKD
+/// never convert secret bytes to [BigInt].
 final BigInt curveOrder = BigInt.parse(
   'fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141',
   radix: 16,
@@ -241,10 +245,22 @@ Uint8List _encodeBigInt(BigInt number) {
 }
 
 int _compare(Uint8List a, Uint8List b) {
-  final aa = bufferToBigInt(a);
-  final bb = bufferToBigInt(b);
-  if (aa == bb) return 0;
-  return aa > bb ? 1 : -1;
+  if (a.length != b.length) {
+    return a.length < b.length ? -1 : 1;
+  }
+
+  // Compare fixed-width big-endian byte strings without materializing either
+  // operand as a managed BigInt. The arithmetic keeps the result stable after
+  // the first differing byte, so private scalar validation does not create
+  // uncontrolled numeric copies.
+  var greater = 0;
+  var less = 0;
+  for (var i = 0; i < a.length; i++) {
+    final undecided = (greater | less) ^ 1;
+    greater |= undecided & (((b[i] - a[i]) >> 8) & 1);
+    less |= undecided & (((a[i] - b[i]) >> 8) & 1);
+  }
+  return greater - less;
 }
 
 /// @deprecated Use [bufferToBigInt].

@@ -40,6 +40,19 @@ void main() {
       zeroize(privChild);
     });
 
+    test('private scalar validation handles byte boundaries', () {
+      final order = _hex(
+        'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141',
+      );
+      expect(isPrivate(_one), isTrue);
+      expect(isPrivate(Uint8List(32)), isFalse);
+      expect(isPrivate(order), isFalse);
+      expect(isOrderScalar(Uint8List(32)), isTrue);
+      expect(isOrderScalar(order), isFalse);
+      expect(isValidDerivationTweak(Uint8List(32)), isFalse);
+      expect(isValidDerivationTweak(order), isFalse);
+    });
+
     test('zero tweak preserves the parent point and requested encoding', () {
       final zero = Uint8List(32);
       expect(pointAddScalar(_gCompressed, zero, true), equals(_gCompressed));

@@ -277,8 +277,8 @@ class BIP32 {
       seed,
     );
     try {
-      final il = i.sublist(0, 32);
-      final ir = i.sublist(32);
+      final il = Uint8List.sublistView(i, 0, 32);
+      final ir = Uint8List.sublistView(i, 32);
       if (!ecc.isPrivate(il)) {
         throw ArgumentError('Invalid master key');
       }
@@ -294,57 +294,70 @@ class BIP32 {
       throw ArgumentError('Missing private key for hardened child key');
     }
 
-    final data = Uint8List(37);
-    Uint8List? mac;
-    try {
-      if (hardened) {
-        data[0] = 0x00;
-        data.setRange(1, 33, _privateKey!.bytes);
-        data.buffer.asByteData().setUint32(33, index);
-      } else {
-        data.setRange(0, 33, publicKey);
-        data.buffer.asByteData().setUint32(33, index);
-      }
-
-      mac = hmacSha512(chainCode, data);
-      final il = mac.sublist(0, 32);
-      final ir = mac.sublist(32);
-
-      // BIP32: invalid if parse256(IL) ≥ n or resulting key is zero / infinity.
-      if (!ecc.isValidDerivationTweak(il)) {
-        if (index >= uint32Max) {
-          throw ArgumentError('Failed to derive a valid child key');
+    var childIndex = index;
+    while (true) {
+      final data = Uint8List(37);
+      Uint8List? mac;
+      try {
+        if (hardened) {
+          data[0] = 0x00;
+          data.setRange(1, 33, _privateKey!.bytes);
+          data.buffer.asByteData().setUint32(33, childIndex);
+        } else {
+          data.setRange(0, 33, publicKey);
+          data.buffer.asByteData().setUint32(33, childIndex);
         }
-        return _deriveWithRetry(index + 1);
-      }
 
-      late BIP32 child;
-      if (!isNeutered()) {
-        final ki = ecc.privateAdd(_privateKey!.bytes, il);
-        if (ki == null) {
-          if (index >= uint32Max) {
+        mac = hmacSha512(chainCode, data);
+        // Views prevent IL and IR from becoming additional managed copies.
+        final il = Uint8List.sublistView(mac, 0, 32);
+        final ir = Uint8List.sublistView(mac, 32);
+
+        // BIP32: invalid if parse256(IL) ≥ n or resulting key is zero / infinity.
+        if (!ecc.isValidDerivationTweak(il)) {
+          if (childIndex >= uint32Max) {
             throw ArgumentError('Failed to derive a valid child key');
           }
-          return _deriveWithRetry(index + 1);
+          childIndex++;
+          continue;
         }
-        child = BIP32.fromPrivateKey(ki, ir, network);
-      } else {
-        final ki = ecc.pointAddScalar(publicKey, il, true);
-        if (ki == null) {
-          if (index >= uint32Max) {
-            throw ArgumentError('Failed to derive a valid child key');
+
+        late BIP32 child;
+        if (!isNeutered()) {
+          final ki = ecc.privateAdd(_privateKey!.bytes, il);
+          if (ki == null) {
+            if (childIndex >= uint32Max) {
+              throw ArgumentError('Failed to derive a valid child key');
+            }
+            childIndex++;
+            continue;
           }
-          return _deriveWithRetry(index + 1);
+          try {
+            child = BIP32.fromPrivateKey(ki, ir, network);
+          } finally {
+            // native_sig wipes its native scratch; this is the managed copy
+            // returned across the boundary and is only an input to the node.
+            zeroize(ki);
+          }
+        } else {
+          final ki = ecc.pointAddScalar(publicKey, il, true);
+          if (ki == null) {
+            if (childIndex >= uint32Max) {
+              throw ArgumentError('Failed to derive a valid child key');
+            }
+            childIndex++;
+            continue;
+          }
+          child = BIP32.fromPublicKey(ki, ir, network);
         }
-        child = BIP32.fromPublicKey(ki, ir, network);
+        child.depth = depth + 1;
+        child.index = childIndex;
+        child.parentFingerprint = fingerprintInt;
+        return child;
+      } finally {
+        zeroize(data);
+        if (mac != null) zeroize(mac);
       }
-      child.depth = depth + 1;
-      child.index = index;
-      child.parentFingerprint = fingerprintInt;
-      return child;
-    } finally {
-      zeroize(data);
-      if (mac != null) zeroize(mac);
     }
   }
 
