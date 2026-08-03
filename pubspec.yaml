@@ -22,7 +22,7 @@ dependencies:
   native_sig:
     git:
       url: https://github.com/bulltechnologies/native_sig.git
-      ref: c9db6f1
+      ref: c9db6f1089d5553904f67686fa0ed3dd49cace71
 
 dev_dependencies:
   flutter_test:
