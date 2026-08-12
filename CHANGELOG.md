@@ -5,6 +5,17 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+
+- Upgraded `native_crypto` to the latest upstream revision, including its
+  shared native scratch arena and caller-owned output APIs.
+- Updated Hash160, HMAC-SHA512, and Base58Check checksum paths to write into
+  reusable output buffers, reducing transient native and managed allocations.
+- Kept `native_sig` on its latest upstream revision and aligned the example
+  iOS host with the native_crypto Flutter plugin integration.
+
 ## [4.0.0] - 2026-07-24
 
 ### Added

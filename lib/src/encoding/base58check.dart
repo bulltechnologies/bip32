@@ -17,9 +17,12 @@ final List<int> _alphabetIndices = () {
 }();
 
 Uint8List _sha256x2(Uint8List buffer) {
-  final first = sha256.hash(buffer);
+  final first = Uint8List(32);
+  final second = Uint8List(32);
   try {
-    return sha256.hash(first);
+    sha256.hashInto(buffer, first);
+    sha256.hashInto(first, second);
+    return second;
   } finally {
     zeroize(first);
   }

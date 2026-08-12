@@ -45,6 +45,37 @@ void main() {
       );
     });
 
+    test('HMAC-SHA512 constant-time verification', () {
+      final key = Uint8List.fromList('bip32'.codeUnits);
+      final data = Uint8List.fromList('native crypto'.codeUnits);
+      final mac = HmacSha512().compute(key: key, data: data);
+      final altered = Uint8List.fromList(mac);
+      altered[0] ^= 1;
+      final hmac = HmacSha512();
+
+      expect(hmac.verify(key: key, data: data, expected: mac), isTrue);
+      expect(hmac.verify(key: key, data: data, expected: altered), isFalse);
+    });
+
+    test('caller-owned digest and HMAC outputs', () {
+      final data = Uint8List.fromList('hello'.codeUnits);
+      final digest = Uint8List(Sha256.digestLength);
+      Sha256().hashInto(data, digest);
+      expect(
+        HEX.encode(digest),
+        '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
+      );
+
+      final key = Uint8List.fromList('key'.codeUnits);
+      final mac = Uint8List(HmacSha512.tagLength);
+      HmacSha512().computeInto(key: key, data: data, out: mac);
+      expect(
+        HEX.encode(mac),
+        'ff06ab36757777815c008d32c8e14a705b4e7bf310351a06a23b612dc4c7433e'
+        '7757d20525a5593b71020ea2ee162d2311b247e9855862b270122419652c0c92',
+      );
+    });
+
     test('hash160 matches native stack', () {
       final data = Uint8List.fromList('hello'.codeUnits);
       expect(

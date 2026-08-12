@@ -56,14 +56,11 @@ const String throwBadHash = 'Expected Hash';
 const String throwBadSignature = 'Expected Signature';
 
 /// Whether [x] is a valid private scalar: 32 bytes, 0 < x < n.
-bool isPrivate(Uint8List x) {
-  if (!isScalar(x)) return false;
-  return _compare(x, _zero32) > 0 && _compare(x, _ecGroupOrder) < 0;
-}
+bool isPrivate(Uint8List x) => NativeSigValidators.isValidSecretKey(x);
 
 /// Whether [p] is a valid secp256k1 public key (compressed or uncompressed SEC1).
 bool isPoint(Uint8List p) {
-  if (p.length < 33) return false;
+  if (!NativeSigValidators.isValidSec1PublicKeyEncoding(p)) return false;
   final prefix = p[0];
   final xCoord = p.sublist(1, 33);
 
@@ -101,7 +98,9 @@ bool isValidDerivationTweak(Uint8List tweak) {
 }
 
 bool isSignature(Uint8List value) {
-  if (value.length != 64) return false;
+  if (!NativeSigValidators.isValidCompactSignatureEncoding(value)) {
+    return false;
+  }
   final r = value.sublist(0, 32);
   final s = value.sublist(32, 64);
   return _compare(r, _ecGroupOrder) < 0 && _compare(s, _ecGroupOrder) < 0;
@@ -118,7 +117,12 @@ bool assumeCompression(bool? value, Uint8List? pubkey) {
 /// serP(k): compressed SEC1 encoding of scalar [d].
 Uint8List? pointFromScalar(Uint8List d, bool compressed) {
   if (!isPrivate(d)) throw ArgumentError(throwBadPrivate);
-  return Secp256k1.publicKeyFromSecret(d, compressed: compressed);
+  final output = Uint8List(
+    compressed
+        ? NativeSigLengths.secp256k1CompressedPublicKey
+        : NativeSigLengths.secp256k1UncompressedPublicKey,
+  );
+  return Secp256k1.publicKeyFromSecretInto(d, output, compressed: compressed);
 }
 
 /// Child public key: point(parse256(IL)) + Kpar (BIP32 CKDpub).
@@ -166,7 +170,11 @@ Uint8List sign(Uint8List hash, Uint8List privateKey) {
   if (!isScalar(hash)) throw ArgumentError(throwBadHash);
   if (!isPrivate(privateKey)) throw ArgumentError(throwBadPrivate);
   try {
-    return Secp256k1.ecdsaSign(messageHash: hash, secretKey: privateKey);
+    return Secp256k1.ecdsaSignInto(
+      messageHash: hash,
+      secretKey: privateKey,
+      output: Uint8List(NativeSigLengths.secp256k1EcdsaSignature),
+    );
   } on InvalidSecretKeyException {
     throw ArgumentError(throwBadPrivate);
   }
