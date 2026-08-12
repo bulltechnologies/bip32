@@ -33,18 +33,21 @@ final Uint8List _halfCurveOrderBytes = Uint8List.fromList([
   0xdf, 0xe9, 0x2f, 0x46, 0x68, 0x1b, 0x20, 0xa0,
 ]);
 
+BigInt? _curveOrder;
+BigInt? _halfCurveOrder;
+
 /// secp256k1 group order *n*.
 ///
 /// This compatibility value is only used by the public BigInt conversion
 /// helpers and signature canonicalization. Private scalar validation and CKD
 /// never convert secret bytes to [BigInt].
-final BigInt curveOrder = BigInt.parse(
+BigInt get curveOrder => _curveOrder ??= BigInt.parse(
   'fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141',
   radix: 16,
 );
 
 /// Half of [curveOrder] (BIP62 low-S bound).
-final BigInt halfCurveOrder = curveOrder >> 1;
+BigInt get halfCurveOrder => _halfCurveOrder ??= curveOrder >> 1;
 
 const String throwBadPrivate = 'Expected Private';
 const String throwBadPoint = 'Expected Point';

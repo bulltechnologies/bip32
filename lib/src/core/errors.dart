@@ -8,7 +8,7 @@ class Bip32Exception implements Exception {
   final String message;
 
   @override
-  String toString() => 'Bip32Exception: $message';
+  String toString() => '$runtimeType: $message';
 }
 
 /// Base58Check decode or extended-key structure invalid.

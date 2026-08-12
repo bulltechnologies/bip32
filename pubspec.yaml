@@ -29,3 +29,4 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   hex: ^0.2.0
+  path: ^1.9.0

@@ -8,14 +8,32 @@ import 'package:native_sig/native_sig.dart';
 void main() {
   test('full BIP32 workflow in background isolate', () async {
     final result = await Isolate.run(_deriveInIsolate);
-    expect(result, 'xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8');
+    expect(
+      result,
+      'xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8',
+    );
   });
 }
 
 String _deriveInIsolate() {
   NativeSig.ensureInitialized();
   final seed = Uint8List.fromList([
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
   ]);
   final master = BIP32.fromSeed(seed);
   final xpub = master.neutered().toBase58();

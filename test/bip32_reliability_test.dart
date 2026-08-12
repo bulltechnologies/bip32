@@ -13,8 +13,7 @@ void main() {
       () => BIP32.fromPrivateKey(Uint8List(32), Uint8List(16)),
       throwsA(
         predicate(
-          (e) =>
-              e is ArgumentError && e.message == 'Invalid chain code length',
+          (e) => e is ArgumentError && e.message == 'Invalid chain code length',
         ),
       ),
     );
@@ -39,19 +38,67 @@ void main() {
     expect(
       () => parseDerivationPath('m/${uint32Max + 1}'),
       throwsA(
-        predicate(
-          (e) => e is ArgumentError && e.message == 'Expected UInt32',
-        ),
+        predicate((e) => e is ArgumentError && e.message == 'Expected UInt32'),
       ),
     );
   });
 
   test('WIF round-trip preserves private key after decode buffer wipe', () {
-    final node = BIP32.fromSeed(Uint8List.fromList(List<int>.generate(16, (i) => i)));
+    final node = BIP32.fromSeed(
+      Uint8List.fromList(List<int>.generate(16, (i) => i)),
+    );
     final wifString = node.toWIF();
     final decoded = decode(wifString);
     expect(decoded.privateKey, node.privateKey);
     expect(decoded.privateKey.every((b) => b != 0), isTrue);
     expect(decoded.compressed, isTrue);
+  });
+
+  test('decodeRaw rejects empty input before indexing version byte', () {
+    expect(
+      () => decodeRaw(Uint8List(0)),
+      throwsA(
+        predicate(
+          (e) => e is ArgumentError && e.message == 'Invalid WIF length',
+        ),
+      ),
+    );
+  });
+
+  test('serialized bytes and frame round-trip without Base58', () {
+    final node = BIP32.fromSeed(
+      Uint8List.fromList(List<int>.generate(16, (i) => i)),
+    );
+    final payload = node.toSerializedBytes();
+    expect(payload.length, extendedKeyByteLength);
+    expect(BIP32.fromSerializedBytes(payload).toBase58(), node.toBase58());
+
+    final frame = node.toSerializedFrame();
+    expect(frame.length, extendedKeyFrameByteLength);
+    expect(BIP32.fromSerializedFrame(frame).toBase58(), node.toBase58());
+  });
+
+  test('node lifecycle helpers', () {
+    final node = BIP32.fromSeed(
+      Uint8List.fromList(List<int>.generate(16, (i) => i)),
+    );
+    expect(node.hasPrivateKey, isTrue);
+    expect(node.isDisposed, isFalse);
+
+    final testnet = node.copyWithNetwork(Networks.bitcoinTestnet);
+    expect(testnet.network, Networks.bitcoinTestnet);
+    expect(testnet.toBase58().startsWith('tprv'), isTrue);
+
+    final neutered = node.neutered();
+    expect(neutered.hasPrivateKey, isFalse);
+    node.dispose();
+    expect(node.isDisposed, isTrue);
+    expect(() => node.publicKey, throwsStateError);
+  });
+
+  test('fromSeed accepts List<int> seed without Uint8List conversion', () {
+    final seed = List<int>.generate(16, (i) => i);
+    final node = BIP32.fromSeed(seed);
+    expect(node.isMaster, isTrue);
   });
 }

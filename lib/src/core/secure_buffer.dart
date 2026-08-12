@@ -15,6 +15,9 @@ class SecureBuffer {
   /// Copies [data] so callers cannot mutate this buffer via their reference.
   SecureBuffer(Uint8List data) : bytes = Uint8List.fromList(data);
 
+  /// Takes ownership of [data] without copying (internal use after validation).
+  SecureBuffer.adopt(Uint8List data) : bytes = data;
+
   Uint8List bytes;
 
   bool _disposed = false;
