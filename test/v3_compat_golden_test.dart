@@ -32,10 +32,7 @@ Future<void> main() async {
       final hash = _hex(case_['hash'] as String);
       final node = BIP32.fromSeed(seed);
       expect(HEX.encode(node.sign(hash)), case_['signature']);
-      expect(
-        node.verify(hash, _hex(case_['signature'] as String)),
-        isTrue,
-      );
+      expect(node.verify(hash, _hex(case_['signature'] as String)), isTrue);
     });
 
     test('high-S signature still verifies (legacy compat)', () {
@@ -59,7 +56,8 @@ Future<void> main() async {
     for (final entry in (goldens['official_paths'] as List<dynamic>)) {
       final map = entry as Map<String, dynamic>;
       test('official ${map['label']}', () {
-        final node = BIP32.fromSeed(_hex(map['seed'] as String))
+        final node = BIP32
+            .fromSeed(_hex(map['seed'] as String))
             .derivePath(map['path'] as String);
         _assertNode(node, map);
       });

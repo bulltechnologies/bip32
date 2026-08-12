@@ -178,9 +178,7 @@ void main() {
         expect(
           () => BIP32.fromBase58(c['key']!),
           throwsA(
-            predicate(
-              (e) => e is ArgumentError && e.message == c['error'],
-            ),
+            predicate((e) => e is ArgumentError && e.message == c['error']),
           ),
         );
       });
@@ -189,9 +187,7 @@ void main() {
 
   group('BIP32 structural guarantees', () {
     test('CKDpub(N(m),i) equals N(CKDpriv(m,i)) for non-hardened i', () {
-      final master = BIP32.fromSeed(
-        _hex('000102030405060708090a0b0c0d0e0f'),
-      );
+      final master = BIP32.fromSeed(_hex('000102030405060708090a0b0c0d0e0f'));
       for (final i in [0, 1, 5, 0x7fffffff]) {
         final fromPrivate = master.derive(i).neutered().toBase58();
         final fromPublic = master.neutered().derive(i).toBase58();
@@ -200,9 +196,9 @@ void main() {
     });
 
     test('round-trip Base58 preserves key', () {
-      final node = BIP32.fromSeed(
-        _hex('000102030405060708090a0b0c0d0e0f'),
-      ).derivePath("m/0'/1/2'");
+      final node = BIP32
+          .fromSeed(_hex('000102030405060708090a0b0c0d0e0f'))
+          .derivePath("m/0'/1/2'");
       final encoded = node.toBase58();
       final decoded = BIP32.fromBase58(encoded);
       expect(decoded.toBase58(), encoded);
@@ -211,9 +207,7 @@ void main() {
     });
 
     test('derivation depth cannot exceed 255', () {
-      var node = BIP32.fromSeed(
-        _hex('000102030405060708090a0b0c0d0e0f'),
-      );
+      var node = BIP32.fromSeed(_hex('000102030405060708090a0b0c0d0e0f'));
       for (var d = 0; d < maxBip32Depth; d++) {
         node = node.derive(0);
       }
@@ -252,8 +246,7 @@ void main() {
         () => pub.sign(Uint8List(32)),
         throwsA(
           predicate(
-            (e) =>
-                e is ArgumentError && e.message == 'Missing private key',
+            (e) => e is ArgumentError && e.message == 'Missing private key',
           ),
         ),
       );

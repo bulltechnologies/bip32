@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:path/path.dart' as p;
 
 /// Resolves JSON test fixtures for package `test/` runs and example integration
 /// tests (bundled under `assets/`).
@@ -28,23 +29,8 @@ List<String> _fileCandidates(String name) {
   final out = <String>[];
   for (final base in roots) {
     for (final rel in ['test/$name', '../test/$name', '../../test/$name']) {
-      out.add(_join(base, rel));
+      out.add(p.normalize(p.join(base, rel)));
     }
   }
   return out;
-}
-
-String _join(String a, String b) {
-  final parts = <String>[];
-  for (final segment in [a, b]) {
-    for (final part in segment.split('/')) {
-      if (part.isEmpty || part == '.') continue;
-      if (part == '..') {
-        if (parts.isNotEmpty) parts.removeLast();
-        continue;
-      }
-      parts.add(part);
-    }
-  }
-  return parts.join('/');
 }

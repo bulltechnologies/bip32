@@ -37,14 +37,14 @@ Requires **Flutter 3.44+** (Dart 3.12+). Cryptography is delegated to native bac
 
 ### Platform setup
 
-1. Call `NativeSig.ensureInitialized()` once during app startup (before spawning crypto isolates).
+1. Call `Bip32Native.ensureInitialized()` (or `NativeSig.ensureInitialized()`) once during app startup before spawning crypto isolates.
 2. Run all `bip32` operations that touch secrets on a **dedicated background isolate**, not the UI isolate.
 
 ```dart
-import 'package:native_sig/native_sig.dart';
+import 'package:bip32/bip32.dart';
 
 void bootstrapCrypto() {
-  NativeSig.ensureInitialized();
+  Bip32Native.ensureInitialized();
   // spawn your crypto worker isolate(s) after this
 }
 ```
@@ -129,9 +129,14 @@ WalletLayout.deriveExternal(master, 0, 5);
 
 Accounts use hardened indices: `m/iH/0/k` (receive), `m/iH/1/k` (change).
 
-### Low-level crypto (advanced)
+### Import surfaces
 
-`hash160`, `hmacSha512`, `isPrivate`, `isPoint`, `pointFromScalar`, `privateAdd`, `pointAddScalar` — exposed for auditing and custom pipelines.
+| Import | Use when |
+|--------|----------|
+| `package:bip32/bip32.dart` | Wallet apps: `BIP32`, paths, networks, WIF, `Bip32Native` |
+| `package:bip32/bip32_advanced.dart` | Auditing/custom pipelines: adds `hash160`, `hmacSha512`, `ecurve` |
+
+Low-level curve/hash helpers were removed from the stable barrel in v4 to reduce accidental API lock-in.
 
 ---
 
@@ -198,11 +203,20 @@ Short version: valid BIP32 keys and paths are unchanged; upgrade to **Dart 3+**,
 
 ## Development
 
+This package requires **Flutter** (native_crypto / native_sig backends). Use:
+
 ```bash
-dart pub get
-dart test
-dart analyze lib
+flutter pub get
+flutter test
+dart analyze --fatal-infos lib test
+dart format .
+tool/run_benchmarks.sh      # profile microbenchmarks
+tool/run_host_tests.sh macos # example integration suite on desktop
 ```
+
+CI enforces formatting, fatal analyzer infos, unit tests, a **70% line coverage** gate on `lib/`, and profile benchmarks.
+
+> **Note:** `publish_to: none` in `pubspec.yaml` marks this checkout as private; remove it before publishing to pub.dev (the README badge reflects the upstream package name).
 
 ---
 

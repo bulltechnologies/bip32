@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:bip32/bip32.dart';
+import 'package:bip32/bip32_advanced.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hex/hex.dart';
 import 'package:native_sig/native_sig.dart';

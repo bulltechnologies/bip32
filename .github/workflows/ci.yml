@@ -18,7 +18,7 @@ env:
 
 jobs:
   analyze:
-    name: Analyze
+    name: Analyze, format, and test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +28,41 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: dart analyze
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: dart analyze --fatal-infos lib
+      - run: dart analyze test
+      - run: flutter test --no-pub --exclude-tags benchmark
+
+  coverage:
+    name: Coverage gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter test --no-pub --coverage --exclude-tags benchmark
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+      - run: chmod +x tool/check_coverage.sh
+      - run: tool/check_coverage.sh 70
+
+  benchmark:
+    name: Profile benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: chmod +x tool/run_benchmarks.sh
+      - run: tool/run_benchmarks.sh
 
   host-macos:
     name: macOS integration tests

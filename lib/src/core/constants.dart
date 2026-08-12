@@ -3,6 +3,8 @@
 /// Reference: [BIP32 specification](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki).
 library;
 
+// ignore_for_file: constant_identifier_names
+
 /// Hardened child index flag: CKD uses private parent data when `i ≥ 2³¹`.
 const int hardenedIndexFlag = 0x80000000;
 
@@ -14,6 +16,13 @@ const int uint32Max = 4294967295;
 
 /// Byte length of a serialized extended key (before Base58Check).
 const int extendedKeyByteLength = 78;
+
+/// Checksum length appended by Base58Check (double SHA-256, first 4 bytes).
+const int extendedKeyChecksumLength = 4;
+
+/// Byte length of a serialized extended key with Base58Check checksum frame.
+const int extendedKeyFrameByteLength =
+    extendedKeyByteLength + extendedKeyChecksumLength;
 
 /// HMAC-SHA512 key for master extended key generation (`I = HMAC-SHA512(Key, S)`).
 const String bitcoinSeedHmacKey = 'Bitcoin seed';
