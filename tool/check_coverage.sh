@@ -20,7 +20,16 @@ if ! command -v lcov >/dev/null 2>&1; then
   exit 1
 fi
 
-SUMMARY="$(lcov --extract "$LCOV" '*/lib/*' -o "$ROOT/coverage/lib.info" --quiet 2>&1 && lcov --summary "$ROOT/coverage/lib.info" 2>&1)"
+# Flutter may emit source paths as either `lib/...` (relative) or
+# `<checkout>/lib/...` (absolute), depending on the toolchain. Select the
+# matching form so newer lcov versions do not reject an unused pattern.
+LIB_PATTERN='*/lib/*'
+if grep -q '^SF:lib/' "$LCOV"; then
+  LIB_PATTERN='lib/*'
+fi
+# Flutter's tracefile carries line coverage only. Disable function coverage so
+# lcov 2.x does not reject the otherwise valid file for missing FN records.
+SUMMARY="$(lcov --rc function_coverage=0 --extract "$LCOV" "$LIB_PATTERN" -o "$ROOT/coverage/lib.info" --quiet 2>&1 && lcov --rc function_coverage=0 --summary "$ROOT/coverage/lib.info" 2>&1)"
 LINES="$(printf '%s\n' "$SUMMARY" | awk '/lines/ {print $2}' | tr -d '%')"
 if [ -z "$LINES" ]; then
   echo "error: could not parse line coverage from lcov summary" >&2

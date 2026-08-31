@@ -74,6 +74,40 @@ void main() {
     );
   });
 
+  test('derivePublicKeyPath rejects hardened components on neutered nodes', () {
+    final master = BIP32.fromSeed(
+      Uint8List.fromList(List<int>.generate(16, (i) => i)),
+    );
+    final account = master.neutered();
+
+    expect(
+      () => account.derivePublicKeyPath(const [hardenedIndexFlag]),
+      throwsA(
+        predicate(
+          (error) =>
+              error is ArgumentError &&
+              error.message ==
+                  'derivePublicKeyPath supports non-hardened indices only',
+        ),
+      ),
+    );
+  });
+
+  test('derivePublicKeyPath rejects hardened components on private nodes', () {
+    final master = BIP32.fromSeed(
+      Uint8List.fromList(List<int>.generate(16, (i) => i)),
+    );
+
+    expect(
+      () => master.derivePublicKeyPath(const [0, hardenedIndexFlag, 1]),
+      throwsA(isA<ArgumentError>()),
+    );
+    expect(
+      master.derivePublicKeyPath(const [0, 1]),
+      master.derivePath('m/0/1').publicKey,
+    );
+  });
+
   test('tryParseDerivationPath', () {
     expect(tryParseDerivationPath("m/0'/1")?.indices, [0x80000000, 1]);
     expect(tryParseDerivationPath('not-a-path'), isNull);

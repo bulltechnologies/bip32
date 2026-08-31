@@ -1,0 +1,3 @@
+tags:
+  benchmark:
+    description: Performance benchmarks excluded from the default CI test suite.

@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/native_test_init.dart';
 import 'support/test_assets.dart';
 
-final LITECOIN = NetworkType(
+final litecoin = NetworkType(
   bip32: Bip32Type(private: 0x019d9cfe, public: 0x019da462),
   wif: 0xb0,
 );
@@ -32,7 +32,7 @@ Future<void> main() async {
       group(ff['comment'] ?? ff['base58Priv'], () {
         NetworkType? network;
         if (ff['network'] == 'litecoin') {
-          network = LITECOIN;
+          network = litecoin;
         }
         final hdPrv = BIP32.fromBase58(ff['base58Priv'], network);
         test('works for private key -> HD wallet', () {
@@ -56,10 +56,11 @@ Future<void> main() async {
   }
 
   test('fromBase58 throws', () {
-    (fixtures['invalid']['fromBase58'] as List<dynamic>).forEach((f) {
-      var network;
-      if (f['network'] != null && f['network'] == 'litecoin')
-        network = LITECOIN;
+    for (final f in fixtures['invalid']['fromBase58'] as List<dynamic>) {
+      NetworkType? network;
+      if (f['network'] != null && f['network'] == 'litecoin') {
+        network = litecoin;
+      }
       BIP32? hd;
       try {
         hd = BIP32.fromBase58(f['string'], network);
@@ -68,7 +69,7 @@ Future<void> main() async {
       } finally {
         expect(hd, null);
       }
-    });
+    }
   });
 
   test('works for Private -> public (neutered)', () {
@@ -115,8 +116,8 @@ Future<void> main() async {
   test('throws on wrong types', () {
     final f = fixtures['valid'][0];
     final master = BIP32.fromBase58(f['master']['base58'] as String);
-    (fixtures['invalid']['derive'] as List<dynamic>).forEach((fx) {
-      var hd;
+    for (final fx in fixtures['invalid']['derive'] as List<dynamic>) {
+      BIP32? hd;
       try {
         hd = master.derive(fx);
       } catch (err) {
@@ -124,9 +125,9 @@ Future<void> main() async {
       } finally {
         expect(hd, null);
       }
-    });
-    (fixtures['invalid']['deriveHardened'] as List<dynamic>).forEach((fx) {
-      var hd;
+    }
+    for (final fx in fixtures['invalid']['deriveHardened'] as List<dynamic>) {
+      BIP32? hd;
       try {
         hd = master.deriveHardened(fx);
       } catch (err) {
@@ -134,9 +135,9 @@ Future<void> main() async {
       } finally {
         expect(hd, null);
       }
-    });
-    (fixtures['invalid']['derivePath'] as List<dynamic>).forEach((fx) {
-      var hd;
+    }
+    for (final fx in fixtures['invalid']['derivePath'] as List<dynamic>) {
+      BIP32? hd;
       try {
         hd = master.derivePath(fx);
       } catch (err) {
@@ -144,12 +145,13 @@ Future<void> main() async {
       } finally {
         expect(hd, null);
       }
-    });
-    var hdFPrv1, hdFPrv2;
-    final ZERO32 = Uint8List.fromList(List.generate(32, (index) => 0));
-    final ONE32 = Uint8List.fromList(List.generate(32, (index) => 1));
+    }
+    BIP32? hdFPrv1;
+    BIP32? hdFPrv2;
+    final zero32 = Uint8List.fromList(List.generate(32, (index) => 0));
+    final one32 = Uint8List.fromList(List.generate(32, (index) => 1));
     try {
-      hdFPrv1 = BIP32.fromPrivateKey(new Uint8List(2), ONE32);
+      hdFPrv1 = BIP32.fromPrivateKey(Uint8List(2), one32);
     } catch (err) {
       expect(
         (err as ArgumentError).message,
@@ -159,7 +161,7 @@ Future<void> main() async {
       expect(hdFPrv1, null);
     }
     try {
-      hdFPrv2 = BIP32.fromPrivateKey(ZERO32, ONE32);
+      hdFPrv2 = BIP32.fromPrivateKey(zero32, one32);
     } catch (err) {
       expect((err as ArgumentError).message, "Private key not in range [1, n]");
     } finally {
@@ -194,8 +196,8 @@ Future<void> main() async {
   });
 
   test("fromSeed", () {
-    (fixtures['invalid']['fromSeed'] as List<dynamic>).forEach((f) {
-      var hd;
+    for (final f in fixtures['invalid']['fromSeed'] as List<dynamic>) {
+      BIP32? hd;
       try {
         hd = BIP32.fromSeed(HEX.decode(f['seed']) as Uint8List);
       } catch (err) {
@@ -203,7 +205,7 @@ Future<void> main() async {
       } finally {
         expect(hd, null);
       }
-    });
+    }
   });
 
   test("ecdsa", () {
@@ -219,10 +221,10 @@ Future<void> main() async {
   });
 }
 
-void verify(BIP32 hd, prv, f, network) {
+void verify(BIP32 hd, bool prv, dynamic f, NetworkType? network) {
   expect(HEX.encode(hd.chainCode), f['chainCode']);
-  expect(hd.depth, f['depth'] == null ? 0 : f['depth']);
-  expect(hd.index, f['index'] == null ? 0 : f['index']);
+  expect(hd.depth, f['depth'] ?? 0);
+  expect(hd.index, f['index'] ?? 0);
   expect(HEX.encode(hd.fingerprint), f['fingerprint']);
   expect(HEX.encode(hd.identifier), f['identifier']);
   expect(HEX.encode(hd.publicKey), f['pubKey']);
@@ -236,32 +238,38 @@ void verify(BIP32 hd, prv, f, network) {
   expect(hd.neutered().toBase58(), f['base58']);
   expect(hd.isNeutered(), !prv);
 
-  if (f['children'] == null) return;
+  if (f['children'] == null) {
+    return;
+  }
   if (!prv &&
       (f['children'] as List<dynamic>)
           .map((fc) => fc['hardened'])
-          .contains(true))
+          .contains(true)) {
     return;
+  }
 
-  (f['children'] as List<dynamic>).forEach((cf) {
-    var chd = hd.derivePath(cf['path']);
+  for (final cf in f['children'] as List<dynamic>) {
+    final chd = hd.derivePath(cf['path']);
     verify(chd, prv, cf, network);
-    var chdNoM = hd.derivePath((cf['path'] as String).substring(2)); // no m/
+    final chdNoM = hd.derivePath((cf['path'] as String).substring(2)); // no m/
     verify(chdNoM, prv, cf, network);
-  });
+  }
 
   // test deriving path from successive children
   var shd = hd;
-  (f['children'] as List<dynamic>).forEach((cf) {
-    if (cf['m'] == null) return;
+  for (final cf in f['children'] as List<dynamic>) {
+    if (cf['m'] == null) {
+      continue;
+    }
     if (cf['hardened'] != null && cf['hardened'] as bool) {
       shd = shd.deriveHardened(cf['m']);
     } else {
       // verify any publicly derived children
-      if (cf['base58'] != null)
+      if (cf['base58'] != null) {
         verify(shd.neutered().derive(cf['m']), false, cf, network);
+      }
       shd = shd.derive(cf['m']);
       verify(shd, prv, cf, network);
     }
-  });
+  }
 }

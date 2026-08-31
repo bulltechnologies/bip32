@@ -282,15 +282,27 @@ class BIP32 {
   List<Uint8List> derivePublicKeys(List<int> indices) =>
       indices.map(derivePublicKey).toList(growable: false);
 
-  /// Derives along [indices] and returns only the final compressed public key.
+  /// Derives along non-hardened [indices] and returns only the final compressed
+  /// public key.
+  ///
+  /// This is a CKDpub allocation shortcut. Hardened derivation requires the
+  /// evolving child private scalar and is deliberately handled only by
+  /// [deriveIndices]/[derivePath], whose child nodes own and dispose that state.
   Uint8List derivePublicKeyPath(List<int> indices) {
     _ensureNotDisposed();
     _preflightDepth(indices.length);
+    for (final index in indices) {
+      validateChildIndex(index);
+      if (isHardenedIndex(index)) {
+        throw ArgumentError(
+          'derivePublicKeyPath supports non-hardened indices only',
+        );
+      }
+    }
     var pub = Uint8List.fromList(publicKey);
     var cc = Uint8List.fromList(chainCode);
     try {
       for (final index in indices) {
-        validateChildIndex(index);
         var childIndex = index;
         _CkdPubResult step;
         while (true) {
@@ -304,7 +316,7 @@ class BIP32 {
             step = candidate;
             break;
           }
-          childIndex = _nextChildIndexOrThrow(childIndex);
+          childIndex = _nextPublicChildIndexOrThrow(childIndex);
         }
         zeroize(pub);
         zeroize(cc);
@@ -550,6 +562,15 @@ class BIP32 {
     return childIndex + 1;
   }
 
+  /// Advances an allocation-free public-key derivation retry without crossing
+  /// between the non-hardened and hardened index domains.
+  static int _nextPublicChildIndexOrThrow(int childIndex) {
+    if (childIndex == hardenedIndexFlag - 1 || childIndex >= uint32Max) {
+      throw ArgumentError('Failed to derive a valid child key');
+    }
+    return childIndex + 1;
+  }
+
   void _preflightDepth(int steps) {
     if (steps < 0) {
       throw ArgumentError('Invalid derivation steps');
@@ -580,7 +601,7 @@ class BIP32 {
         privateKey: _privateKey,
       );
       if (step == null) {
-        childIndex = _nextChildIndexOrThrow(childIndex);
+        childIndex = _nextPublicChildIndexOrThrow(childIndex);
         continue;
       }
       try {

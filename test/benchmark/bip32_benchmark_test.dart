@@ -27,7 +27,7 @@ void main() {
       }
       stopwatch.stop();
       final microsPerOp = stopwatch.elapsedMicroseconds / iterations;
-      // Benchmark output is intentionally printed for CI/profile log capture.
+      // Benchmark output is intentionally printed for CI log capture.
       // ignore: avoid_print
       print(
         '$name: ${microsPerOp.toStringAsFixed(1)} µs/op ($iterations iter)',
