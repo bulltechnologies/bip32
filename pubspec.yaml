@@ -18,7 +18,7 @@ dependencies:
   native_crypto:
     git:
       url: https://github.com/bulltechnologies/native_crypto.git
-      ref: dd845bc944dc7e2687c4c830faa6d676433c346f
+      ref: b717f9b5ef50eb3048f7a5a5bf8fea79bd2bb0ec
   native_sig:
     git:
       url: https://github.com/bulltechnologies/native_sig.git
