@@ -214,7 +214,11 @@ tool/run_benchmarks.sh      # profile microbenchmarks
 tool/run_host_tests.sh macos # example integration suite on desktop
 ```
 
-CI enforces formatting, fatal analyzer infos, unit tests, a **70% line coverage** gate on `lib/`, and profile benchmarks.
+CI checks formatting without resolving private dependencies or requiring a
+cross-repository credential. Run analysis, unit tests, coverage, profile
+benchmarks and native host integration locally using the commands above.
+The coordinated wallet_core CI also exercises the pinned BIP32/native package
+graph. Standalone BIP32 CI does not run those dependency-backed checks.
 
 > **Note:** `publish_to: none` in `pubspec.yaml` marks this checkout as private; remove it before publishing to pub.dev (the README badge reflects the upstream package name).
 
