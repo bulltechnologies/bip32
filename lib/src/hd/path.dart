@@ -60,6 +60,8 @@ DerivationPath? tryParseDerivationPath(String path) {
     return parseDerivationPath(path);
   } on ArgumentError {
     return null;
+  } on FormatException {
+    return null;
   }
 }
 

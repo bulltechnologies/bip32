@@ -29,7 +29,7 @@ WIF decodeRaw(Uint8List buffer, [int? version]) {
   if (buffer.length == 33) {
     return WIF(
       version: buffer[0],
-      privateKey: Uint8List.fromList(buffer.sublist(1, 33)),
+      privateKey: buffer.sublist(1, 33),
       compressed: false,
     );
   }
@@ -38,7 +38,7 @@ WIF decodeRaw(Uint8List buffer, [int? version]) {
   }
   return WIF(
     version: buffer[0],
-    privateKey: Uint8List.fromList(buffer.sublist(1, 33)),
+    privateKey: buffer.sublist(1, 33),
     compressed: true,
   );
 }
@@ -58,6 +58,11 @@ Uint8List encodeRaw(int version, List<int> privateKey, bool compressed) {
 }
 
 WIF decode(String string, [int? version]) {
+  // The largest supported frame is 38 bytes including its checksum. Its
+  // Base58 encoding needs at most 52 characters for every version byte.
+  if (string.length > 52) {
+    throw ArgumentError('Invalid WIF length');
+  }
   final decoded = base58check.decode(string);
   try {
     return decodeRaw(decoded, version);

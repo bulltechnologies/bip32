@@ -185,7 +185,7 @@ class BIP32 {
     return wif.encode(
       wif.WIF(
         version: network.wif,
-        privateKey: Uint8List.fromList(_privateKey!.bytes),
+        privateKey: _privateKey!.bytes,
         compressed: compressed,
       ),
     );
@@ -238,7 +238,9 @@ class BIP32 {
   /// Derives along [indices] with optional per-step callback.
   ///
   /// When [disposeIntermediates] is true, intermediate nodes are [dispose]d
-  /// after [onStep] returns; the final node is returned to the caller.
+  /// after the next [onStep] returns; the final node is returned to the caller.
+  /// If derivation or the callback throws, all newly owned nodes are disposed.
+  /// The receiver is never disposed by this operation.
   BIP32 deriveIndices(
     List<int> indices, {
     void Function(BIP32 node, int step)? onStep,
@@ -247,17 +249,25 @@ class BIP32 {
     _ensureNotDisposed();
     _preflightDepth(indices.length);
     var node = this;
-    for (var step = 0; step < indices.length; step++) {
-      final child = node.derive(indices[step]);
-      onStep?.call(child, step);
-      if (disposeIntermediates && step < indices.length - 1) {
-        if (!identical(node, this)) {
-          node.dispose();
+    try {
+      for (var step = 0; step < indices.length; step++) {
+        final parent = node;
+        node = parent.derive(indices[step]);
+        try {
+          onStep?.call(node, step);
+        } finally {
+          if (disposeIntermediates && !identical(parent, this)) {
+            parent.dispose();
+          }
         }
       }
-      node = child;
+      return node;
+    } catch (_) {
+      if (disposeIntermediates && !identical(node, this)) {
+        node.dispose();
+      }
+      rethrow;
     }
-    return node;
   }
 
   /// Derives along [path] (`m/44'/0'/0'/0/0` or relative `44'/0'/0'/0/0`).
@@ -377,8 +387,19 @@ class BIP32 {
   }
 
   /// Decodes a Base58Check extended key.
-  factory BIP32.fromBase58(String string, [NetworkType? network]) =>
-      BIP32.fromSerializedBytes(base58check.decode(string), network);
+  factory BIP32.fromBase58(String string, [NetworkType? network]) {
+    // Any 82-byte frame, including custom versions and leading zero bytes,
+    // fits in at most ceil(log(256^82) / log(58)) == 112 characters.
+    if (string.length > 112) {
+      throw ArgumentError('Invalid buffer length');
+    }
+    final payload = base58check.decode(string);
+    try {
+      return BIP32.fromSerializedBytes(payload, network);
+    } finally {
+      zeroize(payload);
+    }
+  }
 
   /// Decodes a 78-byte serialized extended key payload.
   factory BIP32.fromSerializedBytes(List<int> bytes, [NetworkType? network]) {
@@ -519,14 +540,19 @@ class BIP32 {
             childIndex = _nextChildIndexOrThrow(childIndex);
             continue;
           }
-          child = BIP32._trusted(
-            privateKey: SecureBuffer.adopt(ki),
-            chainCode: _chainCodeFromMac(mac),
-            network: network,
-            depth: depth + 1,
-            index: childIndex,
-            parentFingerprint: parentFingerprint,
-          );
+          try {
+            child = BIP32._trusted(
+              privateKey: SecureBuffer.adopt(ki),
+              chainCode: _chainCodeFromMac(mac),
+              network: network,
+              depth: depth + 1,
+              index: childIndex,
+              parentFingerprint: parentFingerprint,
+            );
+          } catch (_) {
+            zeroize(ki);
+            rethrow;
+          }
         } else {
           final ki = ecc.pointAddScalar(publicKey, il, true);
           if (ki == null) {
@@ -715,16 +741,20 @@ class BIP32 {
       throw ArgumentError('Invalid index');
     }
 
-    final chainCode = buffer.sublist(13, 45);
+    final chainCode = Uint8List.sublistView(buffer, 13, 45);
     validateChainCode(chainCode);
-    final keyData = buffer.sublist(45, 78);
+    final keyData = Uint8List.sublistView(buffer, 45, 78);
 
     late BIP32 hd;
     if (isPrivateVersion) {
       if (keyData[0] != 0x00) {
         throw ArgumentError('Invalid private key');
       }
-      hd = BIP32.fromPrivateKey(keyData.sublist(1, 33), chainCode, network);
+      hd = BIP32.fromPrivateKey(
+        Uint8List.sublistView(keyData, 1, 33),
+        chainCode,
+        network,
+      );
     } else {
       if (keyData[0] == 0x00 || (keyData[0] != 0x02 && keyData[0] != 0x03)) {
         throw ArgumentError('Invalid public key');
@@ -732,7 +762,7 @@ class BIP32 {
       hd = BIP32.fromPublicKey(keyData, chainCode, network);
     }
 
-    return BIP32._(
+    return BIP32._trusted(
       privateKey: hd._privateKey,
       publicKey: hd._publicKey,
       chainCode: hd.chainCode,
