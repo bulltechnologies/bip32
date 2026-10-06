@@ -1,6 +1,6 @@
 # bip32
 
-[![pub package](https://img.shields.io/pub/v/bip32.svg)](https://pub.dev/packages/bip32)
+[![CI](https://github.com/bulltechnologies/bip32/actions/workflows/ci.yml/badge.svg)](https://github.com/bulltechnologies/bip32/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Dart/Flutter implementation of [BIP32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) hierarchical deterministic (HD) wallets.
@@ -30,7 +30,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  bip32: ^4.0.0
+  bip32:
+    git:
+      url: https://github.com/bulltechnologies/bip32.git
+      ref: v4.0.1 # Production builds should pin the release's full commit SHA.
 ```
 
 Requires **Flutter 3.44+** (Dart 3.12+). Cryptography is delegated to native backends; there is no pure-Dart fallback.
@@ -210,15 +213,16 @@ flutter pub get
 flutter test
 dart analyze --fatal-infos lib test
 dart format .
-tool/run_benchmarks.sh      # profile microbenchmarks
+tool/run_benchmarks.sh      # host microbenchmarks
 tool/run_host_tests.sh macos # example integration suite on desktop
 ```
 
 CI checks formatting without resolving private dependencies or requiring a
-cross-repository credential. Run analysis, unit tests, coverage, profile
+cross-repository credential. Run analysis, unit tests, coverage, host
 benchmarks and native host integration locally using the commands above.
-The coordinated wallet_core CI also exercises the pinned BIP32/native package
-graph. Standalone BIP32 CI does not run those dependency-backed checks.
+The authenticated wallet_core dependency matrix checks the exact pinned BIP32
+revision on Linux and macOS, including package analysis, unit tests, coverage,
+and native example integration. Standalone BIP32 CI remains credential-free.
 
 > **Note:** `publish_to: none` in `pubspec.yaml` marks this checkout as private; remove it before publishing to pub.dev (the README badge reflects the upstream package name).
 

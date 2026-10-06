@@ -4,6 +4,8 @@ analyzer:
   errors:
     deprecated_member_use_from_same_package: ignore
     prefer_initializing_formals: ignore
+  exclude:
+    - build/**
 
 linter:
   rules:

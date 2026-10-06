@@ -756,11 +756,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  bip32: ^4.0.0
-  native_sig: # initialized by your app bootstrap
+  bip32:
+    git:
+      url: https://github.com/bulltechnologies/bip32.git
+      ref: v4.0.1 # Use the full release commit SHA in production.
 ```
 
-`bip32` pins immutable git refs for `native_crypto` and `native_sig` until those packages publish to pub.dev.
+`bip32` and its native dependencies are distributed from Git. The package pins
+immutable commits for `native_crypto` and `native_sig`; initialize the signing
+backend through `Bip32Native.ensureInitialized()` during app bootstrap.
 
 ### Testing after upgrade
 

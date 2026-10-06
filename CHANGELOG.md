@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [4.0.1] - 2026-10-06
+
+### Fixed
+
+- Dispose every owned derivation intermediate on success, callback failure, and
+  later derivation failure while preserving caller-owned roots and default nodes.
+- Bound extended-key and WIF imports before decoding, wipe import scratch, and
+  remove redundant key/chain-code copies without changing serialized output.
+- Return null from the derivation-path try-parser for numeric overflow.
+- Align native backend revisions with BIP39 and wallet_core's coordinated release.
+- Add ownership and import-boundary regression tests. Package behavioral and
+  native-host checks run in wallet_core's authenticated dependency CI matrix.
+
 ### Changed
 
 - Upgraded `native_crypto` to the latest upstream revision, including its
