@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [4.0.2] - 2026-10-13
+
+### Changed
+
+- Pin Native Crypto 0.2.1 at `4de5f63783c95613eacf2e4c666a1c69db86ead9`
+  so BIP32, BIP39 and WalletCore 0.3.0 resolve one immutable native backend.
+- Preserve derivation, signing, serialized keys and public API behavior.
+
 ## [4.0.1] - 2026-10-06
 
 ### Fixed
