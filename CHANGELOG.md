@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Pin the shared Native Crypto backend to `20e56493086222f6a04920868675d85ec5ae86c1`
+  for its checksum-verified OpenSSL 3.5.9 security update. Derivation, signing,
+  serialized keys, buffer ownership and the public API remain unchanged.
+
 ## [4.0.2] - 2026-10-13
 
 ### Changed
